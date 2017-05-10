@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <EditTextPreference
+        android:key="@string/button_text_preference"
+        android:title="Button Text"
+        android:summary="text for the activity button"
+        android:dialogTitle="Button Text"
+        android:defaultValue="@string/button_text_default" />
+    <EditTextPreference
+        android:title="SMS Text"
+        android:key="@string/sms_msg_preference"
+        android:summary="text for the text message that will be sent"
+        android:dialogTitle="SMS Text" />
+
+    <com.maryhikes.aokay.component.ContactListPreference
+        android:defaultValue="@array/contacts_default"
+        android:key="@string/contacts_preference"
+        android:summary="contacts to which the text will be sent"
+        android:title="Contacts"
+        ></com.maryhikes.aokay.component.ContactListPreference>
+
+
+    <!--
+    <EditTextPreference android:title="Phone Number"
+        android:key="phoneNumber_preference"
+        android:summary="phone number to which the text will be sent"
+        android:dialogTitle="Phone Number" />
+        -->
+</PreferenceScreen>

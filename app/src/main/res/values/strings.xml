@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">aOkay</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Preferences -->
+    <string name="button_text_preference">button_text_preference</string>
+    <string name="button_text_default">Check In</string>
+
+    <string name="sms_msg_preference">sms_msg_preference</string>
+    <string name="sms_msg_default">A-Okay!</string>
+
+    <string name="contacts_preference">contacts_preference</string>
+    <string-array name="contacts_default"></string-array>
+</resources>
