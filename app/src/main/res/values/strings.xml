@@ -9,6 +9,9 @@
     <string name="sms_msg_preference">sms_msg_preference</string>
     <string name="sms_msg_default">A-Okay!</string>
 
+    <string name="success_msg_preference">success_msg_preference</string>
+    <string name="success_msg_default">Message sent!</string>
+
     <string name="contacts_preference">contacts_preference</string>
     <string-array name="contacts_default"></string-array>
 </resources>

@@ -1,13 +1,17 @@
 package com.maryhikes.aokay.activity;
 
+import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.res.Resources;
-import android.database.Cursor;
+import android.content.IntentFilter;
 import android.preference.PreferenceManager;
-import android.provider.ContactsContract;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.ContextThemeWrapper;
+import android.telephony.SmsManager;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.os.Bundle;
@@ -15,21 +19,23 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.maryhikes.aokay.R;
-import com.maryhikes.aokay.utility.SmsSender;
 import com.maryhikes.aokay.utility.aOkayPreferences;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+
+import static android.view.View.GONE;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener{
 
     private aOkayPreferences preferences;
-    private SmsSender smsSender;
 
+    private ImageView imgSuccess;
+    private ProgressBar pbarSending;
     private Button btnSendText;
 
     @Override
@@ -38,12 +44,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         //set required content
         setContentView(R.layout.activity_main);
         preferences = new aOkayPreferences(getApplicationContext(),PreferenceManager.getDefaultSharedPreferences(getBaseContext()), getResources());
-        smsSender = new SmsSender();
-
-        refreshButton();
 
         btnSendText = (Button) findViewById(R.id.btnSendSMS);
         btnSendText.setOnClickListener(this);
+
+        imgSuccess = (ImageView) findViewById(R.id.imgSuccess);
+
+        pbarSending = (ProgressBar) findViewById(R.id.pbarSending);
     }
 
     @Override
@@ -91,28 +98,109 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
             List<String> phoneNumbers = preferences.getPhoneNumbers();
 
             if (phoneNumbers != null && phoneNumbers.size() > 0) {
-                //send text
-                SmsSender.SmsSenderResult result = smsSender.SendSms(preferences.getSmsMessage(), preferences.getPhoneNumbers());
-                if (result == null) {
-                    errorMessage = "SMSSender failure";
-                }
-                else if(!result.success) { errorMessage = result.failMessage; }
-
+                //send texts
+                sendOneSMS(preferences.getPhoneNumbers().get(0),"message");
             } else {
                 errorMessage = "No contacts have been selected. Select at least one contact to message from the app settings.";
             }
 
             //if there is an error message, then we have failed. Show the error message.
             if (errorMessage != null && !errorMessage.isEmpty()) {
+
                 Toast.makeText(getApplicationContext(),errorMessage,Toast.LENGTH_LONG).show();
-            }
-            //otherwise we've sent the message, change the button to the success image
-            else {
-                Toast.makeText(getApplicationContext(),"Text sent!",Toast.LENGTH_LONG).show();
             }
 
         }
     }
 
+
+    //sending SMS
+
+    private void sendOneSMS(String phoneNumber, String message)
+    {
+        String SENT = "SMS_SENT";
+        String DELIVERED = "SMS_DELIVERED";
+
+        PendingIntent sentPI = PendingIntent.getBroadcast(this, 0,
+                new Intent(SENT), 0);
+
+        PendingIntent deliveredPI = PendingIntent.getBroadcast(this, 0,
+                new Intent(DELIVERED), 0);
+
+        //---when the SMS has been sent---
+        registerReceiver(new BroadcastReceiver(){
+            @Override
+            public void onReceive(Context arg0, Intent arg1) {
+                switch (getResultCode())
+                {
+                    case Activity.RESULT_OK:
+                        showSuccess();
+                        break;
+                    case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
+                        showError("Message not sent! Unknown failure.");
+                        break;
+                    case SmsManager.RESULT_ERROR_NO_SERVICE:
+                        showError("Message not sent! No service.");
+                        break;
+                    case SmsManager.RESULT_ERROR_NULL_PDU:
+                        showError("Message not sent! Null PDU.");
+                        break;
+                    case SmsManager.RESULT_ERROR_RADIO_OFF:
+                        showError("Message not sent! Radio off.");
+                        break;
+                }
+            }
+        }, new IntentFilter(SENT));
+
+        //---when the SMS has been delivered---
+        registerReceiver(new BroadcastReceiver(){
+            @Override
+            public void onReceive(Context arg0, Intent arg1) {
+                switch (getResultCode())
+                {
+                    case Activity.RESULT_OK:
+                        showSuccess();
+                        break;
+                    case Activity.RESULT_CANCELED:
+                        showError("Message not sent! Unknown failure.");
+                        break;
+                }
+            }
+        }, new IntentFilter(DELIVERED));
+
+        SmsManager sms = SmsManager.getDefault();
+        sms.sendTextMessage(phoneNumber, null, message, sentPI, deliveredPI);
+
+        btnSendText.setVisibility(View.GONE);
+        pbarSending.setVisibility(View.VISIBLE);
+    }
+
+
+    private void showError(String errorMessage){
+        imgSuccess.setVisibility(GONE);
+        pbarSending.setVisibility(GONE);
+        btnSendText.setVisibility(View.VISIBLE);
+
+        if(errorMessage != null && !errorMessage.isEmpty()) {
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder((new ContextThemeWrapper(this, R.style.dialog)));
+            alertBuilder.setTitle("A-Okay Failure");
+            alertBuilder.setMessage(errorMessage);
+            alertBuilder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertBuilder.setIcon(android.R.drawable.ic_dialog_alert);
+            alertBuilder.show();
+        }
+    }
+
+    private void showSuccess(){
+        btnSendText.setVisibility(GONE);
+        pbarSending.setVisibility(GONE);
+        imgSuccess.setVisibility(View.VISIBLE);
+
+        Toast.makeText(getApplicationContext(), preferences.getSuccessMessage(), Toast.LENGTH_LONG).show();
+    }
 
 }

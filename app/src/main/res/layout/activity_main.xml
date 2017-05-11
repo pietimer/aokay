@@ -20,7 +20,27 @@
         android:layout_weight=".8"
         android:textSize="20sp"
         android:text="@string/button_text_default"
+        android:visibility="visible"
         />
+
+    <ImageView
+        android:id="@+id/imgSuccess"
+        android:layout_width="fill_parent"
+        android:layout_height="0dp"
+        android:layout_weight=".8"
+        android:visibility="gone"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:src="@drawable/okay"
+        />
+
+    <ProgressBar
+        android:id="@+id/pbarSending"
+        android:layout_width="fill_parent"
+        android:layout_height="0dp"
+        android:layout_weight=".8"
+        android:visibility="gone"
+        android:indeterminate="true"/>
 
     <Space
         android:layout_width="match_parent"

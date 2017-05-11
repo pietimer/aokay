@@ -36,6 +36,10 @@ public class aOkayPreferences {
        return pref.getString(res.getString(R.string.sms_msg_preference), res.getString(R.string.sms_msg_default));
     }
 
+    public String getSuccessMessage(){
+        return pref.getString(res.getString(R.string.success_msg_preference), res.getString(R.string.success_msg_default));
+    }
+
     public List<String> getPhoneNumbers(){
         return getContactPhoneNumbers();
     }
@@ -43,7 +47,7 @@ public class aOkayPreferences {
 
     private ArrayList<String> getContactPhoneNumbers(){
         Set<String> contactsToSms = pref.getStringSet(res.getString(R.string.contacts_preference), null);
-        if(contactsToSms.isEmpty()) { return null; }
+        if(contactsToSms == null || contactsToSms.isEmpty()) { return null; }
 
         ArrayList<String> phoneNumbers = new ArrayList<String>();
 
@@ -73,7 +77,7 @@ public class aOkayPreferences {
 
             if( phoneNumber != null && !phoneNumber.isEmpty()) {
 
-                if (firstPhoneNumber != null) {
+                if (firstPhoneNumber == null) {
                     firstPhoneNumber = phoneNumber;
                 }
 
@@ -85,7 +89,6 @@ public class aOkayPreferences {
                 }
             }
         }
-
 
         if(primaryPhoneNumber != null && !primaryPhoneNumber.isEmpty()){
             return primaryPhoneNumber;

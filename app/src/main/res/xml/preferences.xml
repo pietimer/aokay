@@ -12,6 +12,12 @@
         android:key="@string/sms_msg_preference"
         android:summary="text for the text message that will be sent"
         android:dialogTitle="SMS Text" />
+    <EditTextPreference
+        android:title="Success Message"
+        android:key="@string/success_msg_preference"
+        android:summary="text for the message that will display once a message has been successfully sent"
+        android:dialogTitle="SMS Text" />
+
 
     <com.maryhikes.aokay.component.ContactListPreference
         android:defaultValue="@array/contacts_default"
@@ -20,11 +26,4 @@
         android:title="Contacts"
         ></com.maryhikes.aokay.component.ContactListPreference>
 
-
-    <!--
-    <EditTextPreference android:title="Phone Number"
-        android:key="phoneNumber_preference"
-        android:summary="phone number to which the text will be sent"
-        android:dialogTitle="Phone Number" />
-        -->
 </PreferenceScreen>
