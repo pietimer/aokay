@@ -290,7 +290,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         pbarSending.setVisibility(GONE);
         imgSuccess.setVisibility(View.VISIBLE);
 
-        Toast.makeText(getApplicationContext(), preferences.getSuccessMessage(), Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(), preferences.getSuccessMessage(), Toast.LENGTH_SHORT).show();
     }
 
 }
