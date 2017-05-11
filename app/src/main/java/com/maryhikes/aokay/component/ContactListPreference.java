@@ -98,3 +98,4 @@ public class ContactListPreference extends MultiSelectListPreference {
         return sortedMap;
     }
 }
+

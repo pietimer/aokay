@@ -11,6 +11,7 @@ import android.preference.PreferenceManager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ContextThemeWrapper;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -26,6 +27,7 @@ import android.widget.Toast;
 import com.maryhikes.aokay.R;
 import com.maryhikes.aokay.utility.aOkayPreferences;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static android.view.View.GONE;
@@ -37,6 +39,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
     private ImageView imgSuccess;
     private ProgressBar pbarSending;
     private Button btnSendText;
+
+    //for tracking SMS messages being sent
+    private int numberOfSmsToSend;
+    private int numberOfSmsToDeliver;
+    private ArrayList<String> errorMessages = new ArrayList<String>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,22 +99,23 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
     @Override
     public void onClick(View v) {
         if (v == btnSendText) {
-            String errorMessage = "";
+            errorMessages.clear();
+            boolean success = true;
 
-            //get numbers from contacts
-            List<String> phoneNumbers = preferences.getPhoneNumbers();
+            //get contacts to message
+            List<aOkayPreferences.SimpleContact> contacts = preferences.getContactsToMessage();
 
-            if (phoneNumbers != null && phoneNumbers.size() > 0) {
+            if (contacts != null && contacts.size() > 0) {
                 //send texts
-                sendOneSMS(preferences.getPhoneNumbers().get(0),"message");
+                success = sendSMS(preferences.getContactsToMessage(),preferences.getSmsMessage());
             } else {
-                errorMessage = "No contacts have been selected. Select at least one contact to message from the app settings.";
+                errorMessages.add("No contacts have been selected. Select at least one contact to message from the app settings.");
+                success = false;
             }
 
             //if there is an error message, then we have failed. Show the error message.
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-
-                Toast.makeText(getApplicationContext(),errorMessage,Toast.LENGTH_LONG).show();
+            if (!success) {
+                displayErrorMessages();
             }
 
         }
@@ -115,6 +123,30 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
 
 
     //sending SMS
+    private boolean sendSMS(List<aOkayPreferences.SimpleContact> contacts, String message) {
+        numberOfSmsToSend = contacts.size();
+        numberOfSmsToDeliver = contacts.size();
+
+        boolean allNumbersValid = true;
+
+        for (aOkayPreferences.SimpleContact contact : contacts) {
+            String phoneNumber = contact.phoneNumber;
+            //first validate all numbers
+            if (!android.util.Patterns.PHONE.matcher(phoneNumber).matches() || !PhoneNumberUtils.isGlobalPhoneNumber(phoneNumber) || !PhoneNumberUtils.isWellFormedSmsAddress(phoneNumber)) {
+                errorMessages.add("The phone number for " + contact.name + " (" + phoneNumber + ") is not a vaild phone number to message.");
+                allNumbersValid = false;
+            }
+        }
+
+        if (allNumbersValid) {
+            for (aOkayPreferences.SimpleContact contact : contacts) {
+                sendOneSMS(contact.phoneNumber, message);
+            }
+        }
+
+        return allNumbersValid;
+
+    }
 
     private void sendOneSMS(String phoneNumber, String message)
     {
@@ -131,22 +163,27 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         registerReceiver(new BroadcastReceiver(){
             @Override
             public void onReceive(Context arg0, Intent arg1) {
+                arg0.unregisterReceiver(this);
                 switch (getResultCode())
                 {
                     case Activity.RESULT_OK:
-                        showSuccess();
+                        handleCompletionOfSentMessage(false);
                         break;
                     case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
-                        showError("Message not sent! Unknown failure.");
+                        addError("Unknown failure.");
+                        handleCompletionOfSentMessage(true);
                         break;
                     case SmsManager.RESULT_ERROR_NO_SERVICE:
-                        showError("Message not sent! No service.");
+                        addError("No service.");
+                        handleCompletionOfSentMessage(true);
                         break;
                     case SmsManager.RESULT_ERROR_NULL_PDU:
-                        showError("Message not sent! Null PDU.");
+                        addError("Null PDU.");
+                        handleCompletionOfSentMessage(true);
                         break;
                     case SmsManager.RESULT_ERROR_RADIO_OFF:
-                        showError("Message not sent! Radio off.");
+                        addError("Radio off.");
+                        handleCompletionOfSentMessage(true);
                         break;
                 }
             }
@@ -159,10 +196,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
                 switch (getResultCode())
                 {
                     case Activity.RESULT_OK:
-                        showSuccess();
+                        handleCompletionOfDeliveredMessage();
                         break;
                     case Activity.RESULT_CANCELED:
-                        showError("Message not sent! Unknown failure.");
+                        addError("Unknown failure.");
+                        handleCompletionOfDeliveredMessage();
                         break;
                 }
             }
@@ -175,6 +213,58 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         pbarSending.setVisibility(View.VISIBLE);
     }
 
+    private void handleCompletionOfSentMessage(boolean failed) {
+        numberOfSmsToSend--;
+        if(failed) { numberOfSmsToDeliver--; }
+
+        if(numberOfSmsToDeliver <= 0 && numberOfSmsToSend <= 0) {
+            if (errorMessages.size() > 0) {
+                StringBuilder sb = new StringBuilder();
+                String newline = "";
+                for (String s : errorMessages) {
+                    sb.append(newline);
+                    sb.append(s);
+                    newline = "\n";
+                }
+
+                showError(sb.toString());
+            } else {
+                showSuccess();
+            }
+        }
+    }
+
+    private void handleCompletionOfDeliveredMessage() {
+        numberOfSmsToDeliver--;
+
+        if (numberOfSmsToDeliver <= 0) {
+            if (errorMessages.size() > 0) {
+                displayErrorMessages();
+            } else {
+                showSuccess();
+            }
+        }
+    }
+
+    private void displayErrorMessages(){
+        if(errorMessages.size() > 0) {
+            StringBuilder sb = new StringBuilder();
+            String newline = "";
+            for (String s : errorMessages) {
+                sb.append(newline);
+                sb.append(s);
+                newline = "\n";
+            }
+
+            showError(sb.toString());
+        }
+    }
+
+    private void addError(String errorMessage){
+        if (!errorMessages.contains(errorMessage)){
+            errorMessages.add(errorMessage);
+        }
+    }
 
     private void showError(String errorMessage){
         imgSuccess.setVisibility(GONE);
@@ -184,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         if(errorMessage != null && !errorMessage.isEmpty()) {
             AlertDialog.Builder alertBuilder = new AlertDialog.Builder((new ContextThemeWrapper(this, R.style.dialog)));
             alertBuilder.setTitle("A-Okay Failure");
-            alertBuilder.setMessage(errorMessage);
+            alertBuilder.setMessage("Message not sent! " + errorMessage);
             alertBuilder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int which) {
                             dialog.dismiss();

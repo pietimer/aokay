@@ -40,38 +40,53 @@ public class aOkayPreferences {
         return pref.getString(res.getString(R.string.success_msg_preference), res.getString(R.string.success_msg_default));
     }
 
-    public List<String> getPhoneNumbers(){
-        return getContactPhoneNumbers();
+    public List<SimpleContact> getContactsToMessage(){
+        return getContacts();
     }
 
 
-    private ArrayList<String> getContactPhoneNumbers(){
-        Set<String> contactsToSms = pref.getStringSet(res.getString(R.string.contacts_preference), null);
-        if(contactsToSms == null || contactsToSms.isEmpty()) { return null; }
+    private ArrayList<SimpleContact> getContacts(){
+        Set<String> contactIdsToSms = pref.getStringSet(res.getString(R.string.contacts_preference), null);
+        if(contactIdsToSms == null || contactIdsToSms.isEmpty()) { return null; }
 
-        ArrayList<String> phoneNumbers = new ArrayList<String>();
+        ArrayList<SimpleContact> contacts = new ArrayList<SimpleContact>();
 
-        String[] contactIds = contactsToSms.toArray(new String[] {});
+        String[] contactIds = contactIdsToSms.toArray(new String[] {});
 
         for (String contactId:contactIds) {
-            String phoneNumber = getBestPhoneNumberForContact(ctx, contactId);
-            if (phoneNumber != null && !phoneNumber.isEmpty()) {
-                phoneNumbers.add(phoneNumber);
+            SimpleContact contact = new SimpleContact();
+            contact.name = getName(ctx, contactId);
+            contact.phoneNumber = getBestPhoneNumber(ctx, contactId);
+            if (contact != null && contact.phoneNumber != null && !contact.phoneNumber.isEmpty()) {
+                contacts.add(contact);
             }
         }
 
-        return phoneNumbers;
+        return contacts;
     }
 
+    private String getName(Context context, String contactId){
+        Cursor cursor = context.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null,  ContactsContract.Contacts._ID + "=?", new String[] { contactId }, null);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            return cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+        }
+        else {
+            return null;
+        }
+    }
+
+
     //get the primary phone number, if not set then get first phone number
-    private static String getBestPhoneNumberForContact(Context context, String contactId) {
+    private String getBestPhoneNumber(Context context, String contactId) {
         String primaryPhoneNumber = null;
         String firstPhoneNumber = null;
 
         Cursor cursor = context.getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=?", new String[] { contactId }, null);
 
         int phoneIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DATA);
-        while (cursor.moveToNext()) {
+        int primaryIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY);
+        while (cursor != null && cursor.moveToNext()) {
 
             String phoneNumber = cursor.getString(phoneIdx);
 
@@ -81,7 +96,6 @@ public class aOkayPreferences {
                     firstPhoneNumber = phoneNumber;
                 }
 
-                int primaryIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY);
                 int isPrimary = cursor.getInt(primaryIdx);
                 if (isPrimary > 0) {
                     primaryPhoneNumber = phoneNumber;
@@ -95,5 +109,10 @@ public class aOkayPreferences {
         } else {
             return firstPhoneNumber;
         }
+    }
+
+    public class SimpleContact {
+        public String name;
+        public String phoneNumber;
     }
 }
